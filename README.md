@@ -35,7 +35,7 @@ This project was successful in achieving a two-wheeled autonomous robot based on
 
 ## Hardware and Software Setup
 ### Required Hardware
-- 1 [DesignWare ARC EM Starter Kit(EMSK)][5]
+- 1 [DesignWare ARC EM Starter Kit(EMSK V2.3)][5]
 - 2 [BLE module(HC-05)][6]  
 - 1 [USB To TTL module(CP2102)][7]
 - 1 [IMU module(MPU6050)][8]  
@@ -47,7 +47,7 @@ This project was successful in achieving a two-wheeled autonomous robot based on
 - 1 Robot Platform  
 	![Robot Platform][11]   
 ### Required Software
-- ARC GNU Toolset
+- ARC GNU Toolset 2017.03
 - Serial port terminal, such as putty, tera-term or minicom
 
 ### Hardware Connection
