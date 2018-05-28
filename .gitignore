@@ -1,0 +1,72 @@
+# building folder
+BUILD
+
+# mbed library folder
+mbed-os
+
+# unused files
+.exe
+.o
+.jshintrc
+.tags
+.tags_sorted_by_file
+.DS_Store
+.mbed
+mbed_settings.py
+mbed_settings.pyc
+
+# logs
+*.log
+
+# generated link file
+*.ldf
+*.mkdir_done
+
+# metaware debugger temp files
+**/.sc.project
+
+# ide project temporary files
+**/.metadata
+**/.settings
+
+# embARC generated
+**/embARC_generated
+
+# embARC object folders
+**/obj_*/gnu_*/*
+**/obj_*/mw_*/*
+
+
+# Ignore Doxygen Generated Documents
+doc/autogendoc
+doc/autogendoc-ntshell
+doc/embARC_Document
+middleware/ntshell/src/doc
+
+# Ignore IDE Workspace for develop master
+ide_projects
+
+# Ignore embARC application repo
+application
+tools
+
+# OS
+os/riot
+
+## Ignore unnecessary sources and keep necessary files
+
+# Middleware
+## Ignore unnecessary sources and keep necessary files
+
+middleware/mbedtls/*
+!middleware/mbedtls/*.patch
+!middleware/mbedtls/apply_embARC_patch.sh
+!middleware/mbedtls/mbedtls.mk
+
+# Board
+embARC.sublime-project
+embARC.sublime-workspace
+# repo
+.git
+
+__Previews
