@@ -75,7 +75,7 @@ Here take EMSK2.3, CUR_CORE = arcem7d with GNU Toolset for example to show how t
 3. Interact using EMSK and serial port terminal.  
 
 #### makefile  
-- Selected FreeRTOS in **/application/scr/makefile**, then you can use [FreeRTOS API][13] in your application:  
+- Selected FreeRTOS in **/application/invered_pendulum/scr/makefile**, then you can use [FreeRTOS API][13] in your application:  
 
 		#Selected OS
 		OS_SEL ?= freertos
@@ -88,7 +88,7 @@ Here take EMSK2.3, CUR_CORE = arcem7d with GNU Toolset for example to show how t
 		TOOLCHAIN = gnu
 
 - The relative series of the root directory, here the path of the makefile is
-**/application/scr/makefile**:
+**/application/invered_pendulum/scr/makefile**:
 		
 		#
 		# root dir of embarc
@@ -107,7 +107,7 @@ Here take EMSK2.3, CUR_CORE = arcem7d with GNU Toolset for example to show how t
 See [embARC Example User Guide][14], **"Options to Hard-Code in the Application Makefile"** for more detailed information about **Makefile Options**.
 
 #### Driver
-Placing the drivers' source code in **application/scr/drivers** folder, C source and header file in the folder.
+Placing the drivers' source code in **application/invered_pendulum/scr/drivers** folder, C source and header file in the folder.
 
 |       file      |                   Function                  |
 |-----------------|---------------------------------------------|
