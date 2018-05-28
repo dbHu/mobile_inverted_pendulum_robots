@@ -165,7 +165,7 @@ The file **physParmas.h** contains macro define for data factor and customize ty
 [8]: http://playground.arduino.cc/Main/MPU-6050 "IMU MPU6050 module"
 [9]: http://www.landzo.cn/forum.php?mod=viewthread&tid=10541&extra=page%3D1&page=1 "Motor Driver"
 [10]: http://www.electronics-lab.com/?s=7805 "Voltage Conversion 7805 module"
-[11]: ./doc/screenshot/platform.jpg "Robot Platform"
+[11]: ./doc/screenshot/Platform.jpg "Robot Platform"
 [12]: https://www.freertos.org/a00106.html "FreeRTOS API"
 [13]: http://embarc.org/embarc_osp/doc/embARC_Document/html/page_example.html " embARC Example User Guide"
 
