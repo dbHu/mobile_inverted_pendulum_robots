@@ -47,7 +47,6 @@ middleware/ntshell/src/doc
 ide_projects
 
 # Ignore embARC application repo
-application
 tools
 
 # OS
