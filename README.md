@@ -1,5 +1,6 @@
 # mobile_inverted_pendulum_robots
 This application, which implements a mobile inverted pendulum robots, is designed to show how to develop a **Motion Control** using embARC.  
+VIDEO URL: [DEMO VIDEO][14] 
 
 * [Introduction](#introduction)
 	* [Function](#function)
@@ -168,5 +169,6 @@ The file **physParmas.h** contains macro define for data factor and customize ty
 [11]: ./doc/screenshot/Platform.jpg "Robot Platform"
 [12]: https://www.freertos.org/a00106.html "FreeRTOS API"
 [13]: http://embarc.org/embarc_osp/doc/embARC_Document/html/page_example.html " embARC Example User Guide"
+[14]: http://v.youku.com/v_show/id_XMzYzMDkzNzg3Ng==.html?spm=a2h3j.8428770.3416059.1
 
 
