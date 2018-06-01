@@ -15,13 +15,12 @@ VarAndName varname[varnum] = {
 	{&lqr.k2,					"kb"},
 	{&lqr.k3,					"kc"},
 	{&lqr.k4,					"kd"},
-	/** enlarge 128 */
+	/** enlarge 1024 */
 	{&AcclLPFParam,				"lpfa"},
 	{&SpdLPFParam,				"lpfv"},
 	{&AngLPFParam,				"lpfang"},
 	{&AngLPFParam,				"lpfg"},
 	{&PRINT_PERIOD,				"putTs"},
-	/** enlarge 1024 */
 	{&angPid.p,					"angp"},
 	{&angPid.i,					"angi"},
 	{&angPid.d,					"angd"},
@@ -223,8 +222,6 @@ void paramCorr(void)
 	            	case 6:
 	            	case 7:
 	            	case 8:
-	            		temp_int = (int16_t)(temp * 128);
-	            		break;
 	            	case 9:
 	            	case 10:
 	            	case 11:

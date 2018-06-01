@@ -15,12 +15,12 @@
 #define AcclUnit  5.9855042e-4f;  // m/sq.s/LSB @ fs=2g
 
 /*
- * LPF params << 7
+ * LPF params << 10
  * y(n) = (1-a) * y(n-1) + a * x
  *            float            q1.7
- * set a  -1~0.99219  ->  -128 ~ 127 
+ * set a  -1~0.99902  ->  -512 ~ 511 
  */
-#define LPF_FACTOR 128
+#define LPF_FACTOR 1024
 
 /** all kalman\lqr params << 16 */
 #define A 				65536      	/** 1 << 65536 */

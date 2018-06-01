@@ -50,12 +50,12 @@ int PRINT_PERIOD = 128;
  *           float         q1.7
  * set a  -1~0.99219 -> -128 ~ 127 
  * 
- * factor 128
+ * factor 1024
  */
-int AcclLPFParam = (int)(0.04f * 128);
-int SpdLPFParam = (int)(0.02f * 128);
-int AngLPFParam = (int)(0.4f * 128);
-int GyroLPFParam = (int)(1.f * 128);
+int AcclLPFParam = (int)(0.001f * 1024);
+int SpdLPFParam = (int)(0.02f * 1024);
+int AngLPFParam = (int)(0.9f * 1024);
+int GyroLPFParam = (int)(1.f * 1024);
 
 /*
  * vertical status starting and termination threshold 
@@ -105,7 +105,7 @@ VelOmega desire = {
     .Acc = 32768,
     .Omega = 0,
     .ThetaZ = 0,
-    .ThetaY = -29818        /** -0.455 * 65536 */
+    .ThetaY = -7340        /** -0.112 * 65536 */
 };
 
 /** pid params, factor 1024, avoid overflow*/
