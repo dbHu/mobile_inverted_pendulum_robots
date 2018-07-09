@@ -20,18 +20,22 @@
  *            float            q1.7
  * set a  -1~0.99902  ->  -512 ~ 511 
  */
-#define LPF_FACTOR 1024
+#define LPF_FACTOR 128
 
-/** all kalman\lqr params << 16 */
-#define A 				65536      	/** 1 << 65536 */
-#define A_TRAN 			65536      	/** 1 << 65536 */
-#define B            	131        	/** 1 << 65536 * Ts */
-#define H            	65536      	/** 1 << 65536 */
-#define H_TRAN       	65536		/** 1 << 65536 */
-#define I            	65536      	/** 1 << 65536 */
-#define GYRO_FACTOR  	70         	/** 65536 * GyroUnit */
-#define ANG_FACTOR   	64        	/** 65536 / 1024     */
-#define ENC_FACTOR		115 		/** 65536 * EncUnit */
+/** kalman params << 15 */
+#define A 				32768      	/** 1 << 15 */
+#define A_TRAN 			32768      	/** 1 << 15 */
+#define B            	66        	/** (1 << 15) * Ts */
+#define H            	32768      	/** 1 << 15 */
+#define H_TRAN       	32768		/** 1 << 15 */
+#define I            	32768      	/** 1 << 15 */
+
+/** lqr params << 21 */
+#define GYRO_FACTOR  	2232       	    /** (1 << 21) * GyroUnit */
+#define ANG_FACTOR   	2097152       	/** (1 << 21))     */
+#define ENCL_FACTOR		3679    		/** (1 << 21)) * EncUnit */
+#define ENCR_FACTOR     3679            /** (1 << 21)) * EncUnit */
+
 /*
  * 1-order kalman 
  */

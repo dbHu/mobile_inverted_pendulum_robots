@@ -63,11 +63,11 @@ static DEV_IIC  *emsk_imu_sensor; /* IMU6050 sensor object */
  * \retval	>=0	write success, return bytes written
  * \retval	!E_OK	write failed
  */
-static int32_t mpu6050_reg_write(uint8_t *seq, uint8_t len)
+static int32_t mpu6050_reg_write(uint8_t *seq, uint8_t len, uint8_t i2cId)
 {
 	int32_t ercd = E_PAR;
 
-	emsk_imu_sensor = iic_get_dev(IMU_SENSOR_IIC_ID);
+	emsk_imu_sensor = iic_get_dev(i2cId);
 
 	EMSK_IMU_SENSOR_CHECK_EXP_NORTN(emsk_imu_sensor != NULL);
 
@@ -89,11 +89,11 @@ error_exit:
  * \retval	>=0	read success, return bytes read
  * \retval	!E_OK	read failed
  */
-static int32_t mpu6050_reg_read(uint8_t seq, uint8_t *val, uint8_t len)
+static int32_t mpu6050_reg_read(uint8_t seq, uint8_t *val, uint8_t len, uint8_t i2cId)
 {
 	int32_t ercd = E_PAR;
 
-	emsk_imu_sensor = iic_get_dev(IMU_SENSOR_IIC_ID);
+	emsk_imu_sensor = iic_get_dev(i2cId);
 
 	EMSK_IMU_SENSOR_CHECK_EXP_NORTN(emsk_imu_sensor != NULL);
 
@@ -118,11 +118,11 @@ error_exit:
  * \retval	E_OK	initialize success
  * \retval	!E_OK	initialize failed
  */
-int imuInit()
+int imuInit(uint8_t i2cId)
 {
 	int ercd = E_OK;
 
-	emsk_imu_sensor = iic_get_dev(IMU_SENSOR_IIC_ID);
+	emsk_imu_sensor = iic_get_dev(i2cId);
 
 	EMSK_IMU_SENSOR_CHECK_EXP_NORTN(emsk_imu_sensor != NULL);
 
@@ -132,8 +132,8 @@ int imuInit()
 		ercd = emsk_imu_sensor->iic_control(IIC_CMD_MST_SET_TAR_ADDR, CONV2VOID(IMU_SENSOR_ADDR));
 
 		/* write value to mpu6050 to set registers */
-		mpu6050_reg_write(imu_init_seq1, 2);
-		mpu6050_reg_write(imu_init_seq0, 5);
+		mpu6050_reg_write(imu_init_seq1, 2, i2cId);
+		mpu6050_reg_write(imu_init_seq0, 5, i2cId);
 	}
 
 error_exit:
@@ -146,12 +146,12 @@ error_exit:
  * \retval	E_OK	read success
  * \retval	!E_OK	read failed
  */
-int imuGetValues(ImuValues* imuVal)
+int imuGetValues(ImuValues* imuVal, uint8_t i2cId)
 {
 	int ercd = E_OK;
 
 	/* read 14 data from mpu6050 */
-	ercd = mpu6050_reg_read(MPU6050_REG_ACCEL_XOUT_H, imuData.buf, 14);
+	ercd = mpu6050_reg_read(MPU6050_REG_ACCEL_XOUT_H, imuData.buf, 14, i2cId);
 
 	if (ercd != 14) {
 		ercd = E_OBJ;

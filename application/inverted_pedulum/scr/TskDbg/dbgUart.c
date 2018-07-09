@@ -8,6 +8,13 @@ const int dbgTskPrio = 2;
 const int dbgTskStkSize = 512;
 
 QueueHandle_t dbgMbCmd;
+/*
+ * for print data(isn't ASCII)
+ * transfer putStr len
+ * aviod 0 identifying as a terminator 
+ */
+QueueHandle_t dbgMbNum;
+
 Queue  QUartRx;
 
 char msg[128];
@@ -17,6 +24,18 @@ static DEV_UART *dbg_uart;
 static uint8_t RxBuff;
 static DEV_BUFFER UartRxBuff;
 static DEV_BUFFER UartTxBuff;
+
+int putData(char *num, uint8_t size)
+{    
+    BaseType_t rtn;
+    for(int i = 0; i < size; i++)
+        msg[i] = num[i];
+    rtn=xQueueSend(dbgMbCmd, msg, portMAX_DELAY);
+    configASSERT(rtn==pdPASS);
+    rtn=xQueueSend(dbgMbNum, &size, portMAX_DELAY);
+    configASSERT(rtn==pdPASS);
+    return rtn;
+}
 
 int putStr(const char *format, ...)
 {
@@ -29,16 +48,19 @@ int putStr(const char *format, ...)
     // As a workaround supply a dummy buffer with a size of 1.
     char dummy_buf[1];
     int len = vsnprintf(dummy_buf, sizeof(dummy_buf), format, arg);
-
     if (len < 128) {
         vsprintf(msg, format, arg);
         rtn=xQueueSend(dbgMbCmd, msg, portMAX_DELAY);
         configASSERT(rtn==pdPASS);
-    } else {
+    } 
+    else {
+        len = 7;
         vsprintf(msg, "error\r\n", arg);
         rtn=xQueueSend(dbgMbCmd, msg, portMAX_DELAY);
         configASSERT(rtn==pdPASS);
     }
+    rtn=xQueueSend(dbgMbNum, &len, portMAX_DELAY);
+    configASSERT(rtn==pdPASS);
 
     va_end(arg);
     return len;
@@ -67,24 +89,22 @@ void UartGetLine(char *line)
 
     while(1)
     {
-        /** string dequeue, end with '\r' */
+        /** string dequeue, end with '\r\n' */
         do{
             b = q_de_char(&QUartRx, &c);
             vTaskDelay(5);
         }while(!b);
-        if((*line++ = c) == '\r')
+        if(((*line++ = c) == '\n') && (*(line-2) == '\r'))
             break;
     }
-    /** aad '\0' to the end of string, contribute to strcmp*/
+    /** add '\0' to the end of string, contribute to strcmp*/
+    *(line-2) = '\0';
     *(line-1) = '\0';
     return;
 }
 
-int UartWrite(char *str)
+int UartWrite(char *str, uint8_t len)
 {
-    unsigned int uIdx,len;
-
-    len = strlen(str);
 
     return (int)dbg_uart->uart_write((const void *)(str), len); 
     //DEV_BUFFER_INIT(&UartTxBuff, str, len);
@@ -120,10 +140,12 @@ void UartInit(void)
 void dbgTask(void *pvParameters)
 {
     BaseType_t rtn;
+    uint8_t len;
+
     while(true){
-        
-        if(xQueueReceive(dbgMbCmd, msg, ( TickType_t ) 0)){
-            UartWrite(msg);
+        if(xQueueReceive(dbgMbCmd, msg, ( TickType_t ) 0) && xQueueReceive(dbgMbNum, &len, ( TickType_t ) 0))
+        {
+            UartWrite(msg, len);
         }
     }
 }
@@ -136,6 +158,9 @@ void dbgInit()
 
     dbgMbCmd = xQueueCreate(10, 128);
     configASSERT(dbgMbCmd);
+
+    dbgMbNum = xQueueCreate(10, sizeof(uint8_t));
+    configASSERT(dbgMbNum);
     /*
      *  Initialize UART port 0
      */

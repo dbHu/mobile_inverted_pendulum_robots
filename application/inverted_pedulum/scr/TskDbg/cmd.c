@@ -10,26 +10,28 @@
 #include <math.h>
 
 VarAndName varname[varnum] = {
-	/** origin value */
+	/** enlarge 2 */
 	{&lqr.k1,					"ka"},
 	{&lqr.k2,					"kb"},
 	{&lqr.k3,					"kc"},
 	{&lqr.k4,					"kd"},
-	/** enlarge 1024 */
+	/** enlarge 128 */
 	{&AcclLPFParam,				"lpfa"},
 	{&SpdLPFParam,				"lpfv"},
 	{&AngLPFParam,				"lpfang"},
-	{&AngLPFParam,				"lpfg"},
+	{&GyroLPFParam,				"lpfg"},
 	{&PRINT_PERIOD,				"putTs"},
+	/** enlarge 256 */
 	{&angPid.p,					"angp"},
 	{&angPid.i,					"angi"},
 	{&angPid.d,					"angd"},
 	{&angPid.n,					"angn"},
-	/** enlarge 65536 */
-	{&ANGLEDIFF,				"angmin"},
-	{&ANGLIMIT,					"angmax"},
+	/** enlarge 32768 */
 	{&AngleKal.Q,				"kalq"},
 	{&AngleKal.R,				"kalr"},
+	/** enlarge (1<<21) */
+	{&ANGLEDIFF,				"angmin"},
+	{&ANGLIMIT,					"angmax"},
 	{&desire.Velocity,			"lv"},
 	{&desire.Timeout,			"ts"},
 	{&desire.Acc,				"acc"},
@@ -45,8 +47,8 @@ void paramCorr(void)
 {
 	/** *d = "space", for string decomposition */
 	const char *d = " ";
-	bool exit_flag = 0;
-	float temp;
+	bool exit_flag = 0, gsensor_flag = 0;
+	float temp, angSave = -1106667;
 	int temp_int;
 	MsgType msg;
 
@@ -75,17 +77,20 @@ void paramCorr(void)
 
 	while(1){
 
-        putStr("input:");
+        putStr("input:\r");
         vTaskDelay(50);
         
         /** wait for cmd input */
 		UartGetLine(input);
-
+		
 		/** string decomposition, obtain command */
 		cmd = strtok(input, d);
 
 	    for(int i = 0; i < varnum; i++){
-	    	if(!strcmp(cmd, "start")) {
+	    	//start system
+	    	if(!strcmp(cmd, "k")) {
+	    		gsensor_flag = 0;
+	    		*varname[22].value = angSave;
 				putStr("start acqZeros\r\n");
 	        	vTaskDelay(50);
 	        	msg = EnableAcqZeros;	
@@ -105,12 +110,75 @@ void paramCorr(void)
 	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
 	        	break;
         	}
+        	/*
+        	 * APP control 
+        	 * w  --  lv + 0.1m/s
+        	 * b  --  lv - 0.1m/s
+        	 * l  --  yaw angle + 0.2rad
+        	 * r  --  yaw angle - 0.2rad
+        	 * t  --  lv = 0m/s
+        	 * g  --  start posture control
+        	 * c  --  change center of gravity   
+        	 */
+        	else if(!strcmp(cmd, "w")) {
+        		*varname[17].value += 209715;
+        		putStr("v=%5.3f", *varname[17].value / 2097152.f);
+        		msg = EnableSeqSet;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+	        	break;
+        	}
 
-        	else if(!strcmp(cmd, "stop")) {
+        	else if(!strcmp(cmd, "b")) {
+        		*varname[17].value -= 209715;
+        		putStr("v=%5.3f", *varname[17].value / 2097152.f);
+        		msg = EnableSeqSet;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+	        	break;
+        	}
+
+        	else if(!strcmp(cmd, "l")) {
+        		*varname[21].value += 419430;
+        		putStr("ang=%5.3f", *varname[21].value / 2097152.f);
+        		msg = EnableSeqSet;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+	        	break;
+        	}
+
+        	else if(!strcmp(cmd, "r")) {
+        		*varname[21].value -= 419430;
+        		putStr("yaw=%5.3f", *varname[21].value / 2097152.f);
+        		msg = EnableSeqSet;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+	        	break;
+        	}
+
+        	else if(!strcmp(cmd, "t")) {
+        		*varname[17].value = 0;
+        		putStr("v=%5.3f", *varname[17].value / 2097152.f);
+        		msg = EnableSeqSet;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+	        	break;
+        	}
+
+        	else if(!strcmp(cmd, "s")) {
 				putStr("disable motor\r\n");
 	        	vTaskDelay(50);
 				msg = DisableMotors;	
 	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+	        	break;
+        	}
+
+        	else if(!strcmp(cmd, "g")){
+        		putStr("Enable gravity modify\r\n");
+        		gsensor_flag = 1;
+	        	break;
+        	}
+
+        	else if(!strcmp(cmd, "c") && (gsensor_flag==1)){
+        		cmd = strtok(NULL, d);
+	        	temp = atof(cmd);
+        		*varname[22].value += (int)(temp * 1048576);
+        		putStr("pitch=%5.3f", *varname[22].value / 2097152.f);
 	        	break;
         	}
 
@@ -138,67 +206,48 @@ void paramCorr(void)
 	        	break;
         	}
 
-        	else if(!strcmp(cmd, "dbg")){
-				putStr("print lqr param\r\n");
-	        	vTaskDelay(50);
-				DEBUG_LQR = true;
-	        	break;
-        	}
-
-        	else if(!strcmp(cmd, "time")){
-				putStr("print time\r\n");
+        	 else if(!strcmp(cmd, "time")){
+				putStr("calc time\r\n");
 	        	vTaskDelay(50);
 				PRINT_TIME = true;
 	        	break;
-        	}
+        	}   
 
-        	else if(!strcmp(cmd, "seq")){
-				putStr("print Seq\r\n");
-	        	vTaskDelay(50);
-				PRINT_SPDQ = true;
+        	else if(!strcmp(cmd, "lqr")){
+				DEBUG_LQR = true;
+	        	vTaskDelay(20);
+				msg = EnablePutStr;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+				putStr("print lqr param\r\n");
 	        	break;
         	}
 
-        	else if(!strcmp(cmd, "kal")){
-				putStr("print kalman data\r\n");
-	        	vTaskDelay(50);
-				PRINT_KALMAN = true;
-	        	break;
-        	}           	
-
-        	else if(!strcmp(cmd, "imu")){
-				putStr("print imu data\r\n");
-	        	vTaskDelay(50);
+        	 else if(!strcmp(cmd, "imu")){
 				PRINT_IMU = true;
+	        	vTaskDelay(20);
+				msg = EnablePutStr;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+				putStr("print imu data\r\n");
 	        	break;
         	}           	
 
         	else if(!strcmp(cmd, "pwm")){
-				putStr("print pwm qei data\r\n");
-	        	vTaskDelay(50);
 				PRINT_PWM = true;
-	        	break;
-        	} 
-
-        	else if(!strcmp(cmd, "lqr")){
-				putStr("print lqr data\r\n");
-	        	vTaskDelay(50);
-				PRINT_LQR = true;
+	        	vTaskDelay(20);
+				msg = EnablePutStr;	
+	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
+				putStr("print pwm qei data\r\n");
 	        	break;
         	} 
 
         	else if(!strcmp(cmd, "q")){
+				PRINT_IMU = false;
+				PRINT_PWM = false;
+				DEBUG_LQR = false;
+	        	vTaskDelay(10);
 				msg = DisablePutStr;	
 	        	xQueueSend(motMbCmd, &msg, portMAX_DELAY);
 				putStr("stop data print\r\n");
-				PRINT_TIME = false;
-				PRINT_SPDQ = false;
-				PRINT_KALMAN = false;
-				PRINT_IMU = false;
-				PRINT_PWM = false;
-				PRINT_LQR = false;
-				DEBUG_LQR = false;
-	        	vTaskDelay(50);
 	        	break;
         	}
 
@@ -215,42 +264,59 @@ void paramCorr(void)
 	            	case 1:
 	            	case 2:
 	            	case 3:
-	            		temp_int = (int)temp;
+	            		temp_int = (int)(temp * 2);	        	
+	            		putStr("\t %s = %5.3f (was %5.3f) \r\n", varname[i].name,
+	                			*varname[i].value / 2.f + temp, *varname[i].value / 2.f);
 	            		break;
 	            	case 4:
 	            	case 5:
 	            	case 6:
 	            	case 7:
 	            	case 8:
+	            		temp_int = (int)(temp * 128);	        	
+	            		putStr("\t %s = %5.3f (was %5.3f) \r\n", varname[i].name,
+	                			*varname[i].value / 128.f + temp, *varname[i].value / 128.f);
+	            		break;
 	            	case 9:
 	            	case 10:
 	            	case 11:
 	            	case 12:
-	            		temp_int = (int)(temp * 1024);
+	            		temp_int = (int)(temp * 256);	        	
+	            		putStr("\t %s = %5.3f (was %5.3f)\r\n", varname[i].name,
+	                			*varname[i].value / 256.f + temp, *varname[i].value / 256.f);
+	            		break;
+	            	case 13:
+	            	case 14:
+	            		temp_int = (int)(temp * 32768);	        	
+	            		putStr("\t %s = %5.3f (was %5.3f)\r\n", varname[i].name,
+	                			*varname[i].value / 32768.f + temp, *varname[i].value / 32768.f);
 	            		break;
 	            	default:
-	            		temp_int = (int)(temp * 65536);
+	            		temp_int = (int)(temp * 2097152);	        	
+	            		putStr("\t %s = %5.4f (was %5.4f)\r\n", varname[i].name,
+	                			*varname[i].value / 2097152.f + temp, *varname[i].value / 2097152.f);
 	            		break;
 	            }
 
-	        	putStr("\t %s = %d (was %d)\r\n", varname[i].name,
-	                *varname[i].value + temp_int, *varname[i].value );
-	        	vTaskDelay(50);
-
+	        	vTaskDelay(100);
 	        	*varname[i].value += temp_int;
 	        	
-	        	if(i < 17) putStr("data change after input stop\r\n");
+	        	if(i < 17) 
+	        		putStr("data change after input stop\r\n");
 	    		else {
 	    			putStr("data change right now\r\n");
 	    			msg = EnableSeqSet;	
 	        		xQueueSend(motMbCmd, &msg, portMAX_DELAY);
 	    		}
+	    		break;
 	    	}
 
        		else if(!strcmp(cmd, "exit")) {
             	exit_flag = 1;
             	break;
         	}
+
+	    	vTaskDelay(50);
         }
 
         if(exit_flag){

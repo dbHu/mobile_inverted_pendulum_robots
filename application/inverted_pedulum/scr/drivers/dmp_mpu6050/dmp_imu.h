@@ -18,15 +18,9 @@
 
 #define EMSK_IMU_SENSOR_CHECK_EXP_NORTN(EXPR)    CHECK_EXP_NOERCD(EXPR, error_exit)
 
-/*!< struct for imu data storaged */
-typedef struct __imuValues
-{
-	short acclX, acclY, acclZ;
-    short angvX, angvY, angvZ;
-} ImuValues;
-
-int imuInit(uint8_t i2cId);
-int imuGetValues(ImuValues* imuVal, uint8_t i2cId);
-
+extern int mpu6050_reg_write(unsigned char slave_addr, unsigned char reg_addr, unsigned char length, unsigned char const *data);
+extern int mpu6050_reg_read(unsigned char slave_addr, unsigned char reg_addr, unsigned char length, unsigned char *data);
+extern int board_get_ms(unsigned long *count);
+extern int mpu6050_enable(void);
 #endif  /* _IMU_H_ */
 

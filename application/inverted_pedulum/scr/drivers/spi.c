@@ -41,7 +41,7 @@ int32_t spi_open(void)
 	configASSERT(spi != NULL);
 
 	/*spi frequence:2M*/
-	ercd = spi->spi_open(DEV_MASTER_MODE, 2000000);
+	ercd = spi->spi_open(DEV_MASTER_MODE, 1000000);
 
 	if (ercd != E_OK && ercd != E_OPNED) {
 		return ercd;
@@ -53,9 +53,7 @@ int32_t spi_open(void)
 	 * it doesn't work as expected
 	 */
 	//spi->spi_control(SPI_CMD_SET_DFS, CONV2VOID(16));
-
 	spi->spi_control(SPI_CMD_SET_CLK_MODE, CONV2VOID(SPI_CPOL_0_CPHA_1));
-
 	/*
 	 * avoid starting transmission
 	 */
@@ -71,9 +69,9 @@ int32_t gpio_open(void)
 	gpio = gpio_get_dev(CS_PORT);
 	configASSERT(gpio != NULL);
 
-	ercd = gpio->gpio_open(CS_MASK);
+	ercd = gpio->gpio_open(CS_MASK | (1<<DEV_GPIO_PIN_18));
 	if (ercd == E_OPNED) {
-		gpio->gpio_control(GPIO_CMD_SET_BIT_DIR_OUTPUT, (void *)(CS_MASK));
+		gpio->gpio_control(GPIO_CMD_SET_BIT_DIR_OUTPUT, (void *)(CS_MASK | (1<<DEV_GPIO_PIN_18)));
 	}
 	return E_OK;
 }
@@ -98,15 +96,18 @@ int32_t cpld_spi_init(void)
 		return ercd;
 	}
 
+	/* write 1 to CS pin, pull-up */
+	gpio->gpio_write(CS_MASK, CS_MASK);
+
 	return E_OK;
 }
 
 static void spi_select(void)
 {
+	/*select spi slave device*/
+	spi->spi_control(SPI_CMD_MST_SEL_DEV, CONV2VOID(EMSK_SPI_LINE_0));
 	/* write 0 to CS pin, pull-down */
 	gpio->gpio_write((~CS_MASK), CS_MASK);
-	/*deselect spi slave device*/
-	spi->spi_control(SPI_CMD_MST_SEL_DEV, CONV2VOID(EMSK_SPI_LINE_0));
 }
 
 static void spi_deselect(void)
@@ -123,39 +124,36 @@ static void spi_deselect(void)
  * \retval  spi status
  */
 
-int32_t spi_read_qei(int16_t *qei)
+// int32_t spi_read_qei(int16_t *qei)
+int32_t spi_read_qei(int16_t *qei, int dir)
 {
 	int32_t ercd = 0;
+	static uint64_t cnt;
 
-	DEV_SPI_TRANSFER xferL, xferR;
-	int8_t qeiL[2], qeiR[2];
+	DEV_SPI_TRANSFER xfer;
+	char qeiTmp[2]={0, 0};
 	unsigned int cs_cpu_status;
 
-	DEV_SPI_XFER_SET_TXBUF(&xferL, NULL, 0, 0);
-	DEV_SPI_XFER_SET_RXBUF(&xferL, qeiL, 0, 2);
-	DEV_SPI_XFER_SET_NEXT(&xferL, NULL);
-
-	DEV_SPI_XFER_SET_TXBUF(&xferR, NULL, 0, 0);
-	DEV_SPI_XFER_SET_RXBUF(&xferR, qeiR, 0, 2);
-	DEV_SPI_XFER_SET_NEXT(&xferR, NULL);
+	DEV_SPI_XFER_SET_TXBUF(&xfer, NULL, 0, 0);
+	DEV_SPI_XFER_SET_RXBUF(&xfer, qeiTmp, 0, 2);
+	DEV_SPI_XFER_SET_NEXT(&xfer, NULL);
 
 	spi_select();
 
-	spi->spi_control(SPI_CMD_SET_DUMMY_DATA, CONV2VOID(QEI_L));
-	ercd = spi->spi_control(SPI_CMD_TRANSFER_POLLING, CONV2VOID(&xferL));
-
-	spi->spi_control(SPI_CMD_SET_DUMMY_DATA, CONV2VOID(QEI_R));
-	ercd = spi->spi_control(SPI_CMD_TRANSFER_POLLING, CONV2VOID(&xferR));
+	switch(dir){
+		case 0:
+			spi->spi_control(SPI_CMD_SET_DUMMY_DATA, CONV2VOID(QEI_L));
+			break;
+		case 1:
+			spi->spi_control(SPI_CMD_SET_DUMMY_DATA, CONV2VOID(QEI_R));
+			break;
+	}
+	ercd = spi->spi_control(SPI_CMD_TRANSFER_POLLING, CONV2VOID(&xfer));
 
 	spi_deselect();
 
-	// putStr("L%x %x %x R%x %x\r\n", qeiL[0], qeiL[1], qeiL[2], qeiR[1], qeiR[2]);
-
-	qei[0] = (qeiL[0] << 8) | (qeiL[1] & 0xFF);
-	if(qei[0] & 0x0800) qei[0] = qei[0] | 0xF000;
-
-	qei[1] = (qeiR[0] << 8) | (qeiR[1] & 0xFF);
-	if(qei[1] & 0x0800) qei[1] = qei[1] | 0xF000;
+	*qei = (qeiTmp[0] << 8) | (qeiTmp[1] & 0xFF);
+	if(*qei & 0x0800) *qei = *qei | 0xF000;
 	
 	return ercd;
 
@@ -177,23 +175,31 @@ int32_t spi_read_qei(int16_t *qei)
  * \retval  spi status
  */
 
-int32_t spi_write_pwm(int16_t *pwm)
+int32_t spi_write_pwm(int16_t *pwm, int dir)
 {
 	int32_t ercd = 0;
 
 	DEV_SPI_TRANSFER xfer;
-	int8_t local_buf[4];
 
-	/*
-	 * convert pwm to 8bits
-	 */
-	local_buf[0] = (int8_t)((pwm[0] >> 8) & 0x0F | PWM_L);
-	local_buf[1] = (int8_t)((pwm[0] << 8) >> 8); 
-	local_buf[2] = (int8_t)((pwm[1] >> 8) & 0x0F | PWM_R);
-	local_buf[3] = (int8_t)((pwm[1] << 8) >> 8);
+	int8_t local_buf[2];
 
-	DEV_SPI_XFER_SET_TXBUF(&xfer, local_buf, 0, 4);
-	DEV_SPI_XFER_SET_RXBUF(&xfer, NULL, 4, 0);
+	switch(dir){
+		/*
+		 * convert pwm to 8bits
+		 */
+		case 0:
+			local_buf[0] = (int8_t)((pwm[0] >> 8) & 0x0F | PWM_L);
+			local_buf[1] = (int8_t)((pwm[0] << 8) >> 8);
+			break;
+		case 1:
+			local_buf[0] = (int8_t)((pwm[0] >> 8) & 0x0F | PWM_R);
+			local_buf[1] = (int8_t)((pwm[0] << 8) >> 8);
+			break;
+
+	}
+
+	DEV_SPI_XFER_SET_TXBUF(&xfer, local_buf, 0, 2);
+	DEV_SPI_XFER_SET_RXBUF(&xfer, NULL, 2, 0);
 	DEV_SPI_XFER_SET_NEXT(&xfer, NULL);
 
 	spi_select();

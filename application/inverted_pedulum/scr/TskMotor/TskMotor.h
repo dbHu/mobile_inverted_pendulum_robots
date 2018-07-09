@@ -32,19 +32,23 @@ extern int GyroLPFParam;
 extern int ANGLEDIFF;
 extern int ANGLIMIT;
 extern int PRINT_PERIOD;
-extern bool DEBUG_LQR;
 extern bool PRINT_TIME;
-extern bool PRINT_SPDQ;
-extern bool PRINT_KALMAN;
+extern bool DEBUG_LQR;
 extern bool PRINT_IMU;
 extern bool PRINT_PWM;
-extern bool PRINT_LQR;
 
 /** [saturate: data between min and max] */
 Inline int saturate(int data, int max, int min)
 {
 	int value = (data > max)? max : ((data < min)? min : data);
 	return value;
+}
+
+/** [saturate: data between min and max] */
+Inline int deadzone(int data, int plimit, int nlimit)
+{
+    int value = (data > plimit)? data : ((data < nlimit)? data : 0);
+    return value;
 }
 
 /** [calcSeq: Enqueue (data calc based on Ts) */
@@ -88,7 +92,7 @@ Inline void kalmanPredict_q(Kalman1Var *kalVal, int32_t u)
      * x(k|(k-1)) = A * x((k-1)|(k-1)) + B * u(k)
      * enlarge gyro and ensure xpri factor(16)
      */
-    kalVal->xpri = kalVal->xpos + ((B * u * GYRO_FACTOR) >> 16);
+    kalVal->xpri = kalVal->xpos + ((B * u * GYRO_FACTOR) >> 15);
 
     /*
      * p(k|(k-1)) = A * p((k-1)|(k-1)) * A.Tran() + Q
@@ -107,41 +111,41 @@ Inline int32_t kalmanCorrect_q(Kalman1Var *kalVal, int32_t z)
      * K(k) = p(k|(k-1)) / ( p(k|(k-1)) + R)
      * for ensure amplification factor, K(k) = K(k) << 16
      */
-    kalVal->K = (kalVal->Ppri << 16) / (kalVal->Ppri + kalVal->R);
+    kalVal->K = (kalVal->Ppri << 15) / (kalVal->Ppri + kalVal->R);
     /*
      * x(k|k) = x(k|(k-1)) + K(k) * (z(k) - H * x(k|(k-1)))
      * H = 1 << 16, ingore multiplication
      */
-    kalVal->xpos = kalVal->xpri + (kalVal->K * (z * ANG_FACTOR - kalVal->xpri) >> 16);
+    kalVal->xpos = kalVal->xpri + (kalVal->K * (z * ANG_FACTOR - kalVal->xpri) >> 15);
     /*
      * p(k|k) = ( I – K(k) * H ) * p(k|(k-1))
      * H = 1 << 16, ingore multiplication
      */
-    kalVal->Ppos = (65536 - kalVal->K) * kalVal->Ppri >> 16;
+    kalVal->Ppos = (I - kalVal->K) * kalVal->Ppri >> 16;
 
     return kalVal->xpos;
 }
 
-/** [pidTick_q: calculate pidOut, pidOut -> normalization] */
+/** [pidTick_q: calculate pidOut, pidOut -> normalization (factor 2^16)] */
 Inline int32_t pidTick_q(Pid *pid, int32_t diff)
 {
     int32_t pout;
     int32_t dout;
   
-    pout = ((diff) * pid->p) >> 10;
+    pout = ((diff) * pid->p) >> 8;
 
-    pid->accI += (diff * pid->i / 500) >> 10;
+    pid->accI += (diff * pid->i / 500) >> 8;
 
-    if(pid->accI > 65535)
-        pid->accI = 65535;
+    if(pid->accI > 65536)
+        pid->accI = 65536;
     else if(pid->accI < -65536)
         pid->accI = -65536;
 
-    dout = ((diff * pid->d) >> 10 - pid->accD) * pid->n >> 10;    
+    dout = ((diff * pid->d) >> 8 - pid->accD) * pid->n >> 8;    
     pid->accD += dout / 500;
 
-    if(pid->accD > 65535)
-        pid->accD = 65535;
+    if(pid->accD > 65536)
+        pid->accD = 65536;
     else if(pid->accD < -65536)
         pid->accD = -65536;
 
@@ -149,8 +153,8 @@ Inline int32_t pidTick_q(Pid *pid, int32_t diff)
 
     pout += dout;
 
-    if(pout >65535)
-        pout = 65535;
+    if(pout >65536)
+        pout = 65536;
     else if(pout < -65536)
         pout = -65536;
     

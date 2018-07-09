@@ -6,40 +6,39 @@
 	.align 4
 
 kalmanPredict:
-	mpy 	r1,r1,0x23d2	;B*u*GYRO_FACTOR
+	mpy 	r1,r1,0x42		;B*u
 	ld_s	r3,[r0,0x14]	;xpos
 	ld_s	r2,[r0,0x18]	;Ppos
 	ld		r4,[r0]			;Q
 	add_s	r2,r2,r4		;Q+Ppos
 	st		r2,[r0,0x10]	;Ppri = Q+Ppos
-	asrsr	r1,r1,0x10 		;RND32((B*u*GYRO_FACTOR)>>16)
-	add_s	r1,r3,r1		;xpos + RND32((B*u*GYRO_FACTOR)>>16)
+	asrsr	r1,r1,0x0F 		;RND32((B*u)>>15)
+	add_s	r1,r3,r1		;xpos + RND32((B*u)>>15)
 	j_s.d	[blink]
-	st		r1,[r0,0xc]     ;xpri = xpos + RND32((B*u*GYRO_FACTOR)>>16)
+	st		r1,[r0,0xc]     ;xpri = xpos + RND32((B*u)>>15)
 	nop_s	
 
 kalmanCorrect:
 	ld		r5,[r0,16]		;Ppri
 	ld		r4,[r0,4]		;R
 	ld		r6,[r0,12]		;xpri
-	asl		r2,r5,0x10  	;Ppri << 16
+	asl		r2,r5,0x0F  	;Ppri << 15
 	add 	r4,r4,r5		;Ppri + R
 	asrsr 	r3,r4,0x1 		;(Ppri + R) / 2
-	add_s 	r2,r2,r3 		;(Ppri << 16) + (Ppri + R) / 2
-	div		r4,r2,r4		;((Ppri << 16) + (Ppri + R) / 2) / (Ppri + R)
-	asls    r2,r1,0x6 		;z * ANG_FACTOR
-	rsub	r3,r4,0x10000 	;0x10000 - k
-	subs	r2,r2,r6		;(z * ANG_FACTOR) - xpri
-	mpy		r3,r3,r5		;(0x10000 - k) * Ppri
-	st		r4,[r0,8]		;k = ((Ppri << 16) + (Ppri + R) / 2) / (Ppri + R)
-	mpy 	r2,r2,r4 		;((z * ANG_FACTOR) - xpri) * k
- 	asrsr	r3,r3,0x10 		;RND32((0x10000 - k) * Ppri>>16)
-	st		r3,[r0,0x18] 	;Ppos = RND32((0x10000 - k) * Ppri>>16)
-	asrsr	r2,r2,0x10 		;RND32((z << 6 - xpri) * k>>16)
-	add 	r2,r2,r6 		;xpri + RND32((z * ANG_FACTOR - xpri) * k>>16)
-	st		r2,[r0,0x14] 	;xpos = xpri + RND32((z * ANG_FACTOR - xpri) * k>>16)
+	add_s 	r2,r2,r3 		;(Ppri << 15) + (Ppri + R) / 2
+	div		r4,r2,r4		;((Ppri << 15) + (Ppri + R) / 2) / (Ppri + R)
+	rsub	r3,r4,0x1000 	;I - k
+	subs	r1,r1,r6		;z - xpri
+	mpy		r3,r3,r5		;(I - k) * Ppri
+	st		r4,[r0,8]		;k = ((Ppri << 15) + (Ppri + R) / 2) / (Ppri + R)
+	mpy 	r1,r1,r4 		;(z - xpri) * k
+ 	asrsr	r3,r3,0x0F 		;RND32((I - k) * Ppri>>15)
+	st		r3,[r0,0x18] 	;Ppos = RND32((I - k) * Ppri>>15)
+	asrsr	r1,r1,0x0F 		;RND32((z - xpri) * k>>15)
+	add 	r1,r1,r6 		;xpri + RND32((z - xpri) * k>>15)
+	st		r1,[r0,0x14] 	;xpos = xpri + RND32((z - xpri) * k>>15)
 	j_s.d	[blink]
-	mov_s	r0,r2
+	mov_s	r0,r1
 	nop_s	
 
 accl2AngleIndex:
@@ -92,12 +91,12 @@ pidTick:
 	ld 		r7,[r0,0x10]	;accI
 	ld 		r8,[r0,0x14]	;accD
 	mpy_s 	r3,r3,r1		;p*diff
-	asrsr 	r3,r3,10 		;pout=p*diff>>10
+	asrsr 	r3,r3,8 		;pout=p*diff>>8
 	mpy 	r5,r5,r1		;d*diff
-	asrsr 	r5,r5,10 		;d*diff>>10
-	sub 	r5,r5,r8 		;d*diff>>10 - accD
-	mpy 	r5,r5,r6		;(d*diff>>10 - accD)*n
-	asrsr 	r5,r5,10 		;dout=(d*diff>>10 - accD)*n >> 10
+	asrsr 	r5,r5,8 		;d*diff>>8
+	sub 	r5,r5,r8 		;d*diff>>8 - accD
+	mpy 	r5,r5,r6		;(d*diff>>8 - accD)*n
+	asrsr 	r5,r5,8 		;dout=(d*diff>>8 - accD)*n >> 8
 	mpymu	r2,r5,0x10624dd3
 	asr 	r5,r5,0x1f
 	and		r6,r5,0x10624dd3
@@ -107,9 +106,9 @@ pidTick:
 	# div		r6,r5,500 		;dout*Ts
 	add 	r8,r6,r8		;accD+=dout*Ts
 	mpy 	r4,r4,r1		;i*diff
-	asls 	r8,r8,15		;SAT32(accD<<15), keep abs(accD)<65536
+	asls 	r8,r8,10		;SAT32(accD<<10), keep abs(accD)<65536
 	mpymu	r2,r4,0x10624dd3
-	asrsr 	r8,r8,15		;accD >> 15
+	asrsr 	r8,r8,10		;accD >> 10
 	asr 	r4,r4,0x1f
 	and		r1,r4,0x10624dd3
 	sub 	r2,r2,r1
@@ -117,16 +116,16 @@ pidTick:
 	sub 	r4,r2,r4
 	# div 	r4,r4,500		;i*diff*Ts 
 	st 		r8,[r0,0x14]
-	asrsr 	r4,r4,10 		;i*diff*Ts>>10
-	add 	r7,r7,r4 		;accI+=i*diff*Ts>>10
+	asrsr 	r4,r4,8 		;i*diff*Ts>>8
+	add 	r7,r7,r4 		;accI+=i*diff*Ts>>8
 	add 	r3,r3,r8		;pout+=acclD
-	asls 	r7,r7,15		;SAT32(accI<<15), keep abs(accI)<65536 
-	asrsr 	r7,r7,15		;accI >> 15
+	asls 	r7,r7,10		;SAT32(accI<<10), keep abs(accI)<65536 
+	asrsr 	r7,r7,10		;accI >> 10
 	st 		r7,[r0,0x10]
 	add 	r3,r3,r7		;pout+=accI
-	asls 	r0,r3,15		;SAT32(pout<<15), keep abs(pout)<65536 
-	asrsr 	r0,r0,15		;pout >> 15
+	asls 	r0,r3,10		;SAT32(pout<<10), keep abs(pout)<65536
 	j_s.d	[blink]
+	asrsr 	r0,r0,15		;pout >> 15
 	nop_s
 
 
